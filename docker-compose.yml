@@ -2,7 +2,7 @@
 # HashiCorp Vault - Production Configuration
 # ==========================================
 # Enterprise-grade secret management
-# 
+#
 # Usage:
 #   First time:  ./scripts/init.sh
 #   Start:       docker-compose up -d
@@ -11,12 +11,34 @@
 
 services:
   # ==========================================
+  # Volume Permissions Init (runs once)
+  # ==========================================
+  vault-init:
+    image: hashicorp/vault:1.15
+    container_name: vault-init
+    user: root
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        chown -R vault:vault /vault/data /vault/logs
+        chmod -R 750 /vault/data /vault/logs
+        echo "✅ Permissions set for vault user"
+    volumes:
+      - vault_data:/vault/data
+      - vault_logs:/vault/logs
+    restart: "no"
+
+  # ==========================================
   # Vault Server
   # ==========================================
   vault:
     image: hashicorp/vault:1.15
     container_name: vault-server
     restart: unless-stopped
+    depends_on:
+      vault-init:
+        condition: service_completed_successfully
     ports:
       - "8200:8200"
     environment:
@@ -32,23 +54,20 @@ services:
       - vault_logs:/vault/logs
       # Policies (mounted for easy updates)
       - ./policies:/vault/policies:ro
-    command: server -config=/vault/config/vault.hcl
+    command: server
     cap_add:
-      - IPC_LOCK  # Prevents memory from being swapped to disk
+      - IPC_LOCK # Prevents memory from being swapped to disk
     healthcheck:
-      test: ["CMD", "vault", "status", "-address=http://localhost:8200"]
+      test: [ "CMD", "vault", "status", "-address=http://localhost:8200" ]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 10s
     networks:
       - vault-network
-    # Security: Read-only root filesystem
-    read_only: true
-    # Temporary directories for Vault to write
+    # tmpfs for temporary files
     tmpfs:
       - /tmp
-
   # ==========================================
   # Vault Backup Service (Optional)
   # ==========================================
