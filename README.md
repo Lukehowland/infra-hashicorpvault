@@ -1,6 +1,6 @@
 # 🔐 HashiCorp Vault Infrastructure
 
-Enterprise-grade secret management for all your projects.
+Gestión centralizada de secrets para todos mis proyectos.
 
 ## 📋 Quick Start
 
@@ -13,10 +13,18 @@ docker-compose up -d
 # 2. Wait for Vault to be ready (5 seconds)
 sleep 5
 
-# 3. Initialize Vault (run ONLY ONCE)
-./scripts/init.sh
+# 3. Initialize Vault (run ONLY ONCE - via CLI)
+mkdir -p secrets
+docker exec vault-server vault operator init -format=json > secrets/vault-keys.json
+chmod 600 secrets/vault-keys.json
 
-# 4. Access UI
+# 4. Unseal Vault
+./scripts/unseal.sh
+
+# 5. (Optional) Setup admin user for Web UI
+./scripts/setup-admin.sh
+
+# 6. Access UI
 open http://localhost:8200
 ```
 
@@ -35,20 +43,21 @@ docker-compose up -d
 ```
 vault/
 ├── config/
-│   └── vault.hcl           # Vault server configuration
+│   └── vault.hcl                  # Vault server configuration
 ├── policies/
-│   ├── admin.hcl           # Full admin access
-│   ├── vicvet.hcl          # VicVet app policy
-│   └── readonly.hcl        # Template for new apps
+│   ├── admin.hcl                  # Full admin access
+│   ├── readonly.hcl               # Read-only access template
+│   └── example-app.hcl.template   # Template for new app policies
 ├── scripts/
-│   ├── init.sh             # First-time initialization
-│   ├── unseal.sh           # Unseal after restart
-│   ├── add-project.sh      # Add new project
-│   ├── backup.sh           # Backup Vault data
-│   └── read-secret.sh      # Read secrets helper
-├── secrets/                # ⚠️ NOT committed to git
-│   ├── vault-keys.json     # Unseal keys
-│   └── *-token.txt         # Application tokens
+│   ├── unseal.sh                  # Unseal after restart
+│   ├── setup-admin.sh             # Create admin user for Web UI
+│   ├── add-project.sh             # Add new project with secrets
+│   ├── backup.sh                  # Backup Vault data
+│   └── read-secret.sh             # Read secrets helper
+├── secrets/                       # ⚠️ NOT committed to git
+│   ├── vault-keys.json            # Unseal keys & root token
+│   └── *-token.txt                # Application tokens
+├── backups/                       # ⚠️ NOT committed to git
 ├── docker-compose.yml
 ├── .gitignore
 └── README.md
@@ -57,6 +66,7 @@ vault/
 ## 🔑 Understanding Vault Concepts
 
 ### Unseal Keys
+
 Vault starts in a **sealed** state. To unseal it, you need 3 of 5 keys.
 This is called [Shamir's Secret Sharing](https://en.wikipedia.org/wiki/Shamir%27s_Secret_Sharing).
 
@@ -69,11 +79,13 @@ Key 5: Backup in bank vault
 ```
 
 ### Tokens
+
 - **Root Token**: Full access, use only for initial setup
 - **Admin Token**: For operators
 - **App Tokens**: Limited to specific secrets (e.g., VicVet can only read vicvet/*)
 
 ### Policies
+
 Define what each token can access:
 
 ```hcl
@@ -86,6 +98,7 @@ path "secret/data/vicvet/*" {
 ## 📁 Managing Secrets
 
 ### Read a Secret
+
 ```bash
 # Using helper script
 ./scripts/read-secret.sh vicvet database
@@ -97,6 +110,7 @@ vault kv get secret/vicvet/database
 ```
 
 ### Write a Secret
+
 ```bash
 vault kv put secret/vicvet/new-secret \
     key1="value1" \
@@ -104,9 +118,29 @@ vault kv put secret/vicvet/new-secret \
 ```
 
 ### List Secrets
+
 ```bash
 vault kv list secret/vicvet/
 ```
+
+## 👤 Setting Up Admin User
+
+For human administrators to access the Web UI with username/password:
+
+```bash
+./scripts/setup-admin.sh
+```
+
+This will:
+
+1. Enable userpass authentication
+2. Create an admin user with the `admin` policy
+3. Allow login via Web UI or CLI
+
+**Login options:**
+
+- **Web UI**: <http://localhost:8200> → Method: Username
+- **CLI**: `vault login -method=userpass username=<your-username>`
 
 ## 🆕 Adding a New Project
 
@@ -115,6 +149,7 @@ vault kv list secret/vicvet/
 ```
 
 This will:
+
 1. Create a policy file
 2. Apply the policy to Vault
 3. Generate secure secrets
@@ -124,11 +159,13 @@ This will:
 ## 💾 Backup & Restore
 
 ### Backup
+
 ```bash
 ./scripts/backup.sh
 ```
 
 ### Restore
+
 ```bash
 # 1. Stop Vault
 docker-compose down
@@ -173,6 +210,7 @@ docker-compose up -d
 ## 🌐 Connecting Your Application
 
 ### Option 1: Environment Variable
+
 ```bash
 # In your application
 export VAULT_ADDR=http://vault:8200
@@ -180,13 +218,17 @@ export VAULT_TOKEN=$(cat secrets/vicvet-token.txt)
 ```
 
 ### Option 2: Vault Agent (Advanced)
+
 For production, use [Vault Agent](https://developer.hashicorp.com/vault/docs/agent) to:
+
 - Auto-renew tokens
 - Cache secrets
 - Template secrets to files
 
 ### Option 3: SDK
+
 Use official SDKs:
+
 - [Rust](https://crates.io/crates/vaultrs)
 - [Go](https://github.com/hashicorp/vault/tree/main/api)
 - [Node.js](https://github.com/kr1sp1n/node-vault)
@@ -200,17 +242,22 @@ Use official SDKs:
 ## ⚠️ Troubleshooting
 
 ### Vault is sealed after restart
+
 ```bash
 ./scripts/unseal.sh
 ```
 
 ### Lost unseal keys
+
 If you've lost your unseal keys and `secrets/vault-keys.json`:
+
 1. You cannot recover the existing data
 2. You must reinitialize: `docker-compose down -v && docker-compose up -d`
 
 ### Permission denied
+
 Check that your token has the correct policy:
+
 ```bash
 vault token lookup
 ```
