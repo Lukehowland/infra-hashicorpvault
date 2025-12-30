@@ -7,35 +7,23 @@ Gestión centralizada de secrets para todos mis proyectos.
 ### First Time Setup
 
 ```bash
-# 1. Start Vault
-docker-compose up -d
-
-# 2. Wait for Vault to be ready (5 seconds)
-sleep 5
-
-# 3. Initialize Vault (run ONLY ONCE - via CLI)
-mkdir -p secrets
-docker exec vault-server vault operator init -format=json > secrets/vault-keys.json
-chmod 600 secrets/vault-keys.json
-
-# 4. Unseal Vault
-./scripts/unseal.sh
-
-# 5. (Optional) Setup admin user for Web UI
-./scripts/setup-admin.sh
-
-# 6. Access UI
-open http://localhost:8200
+make up          # 1. Start Vault
+make init        # 2. Initialize & Unseal (first time only)
+make setup-admin # 3. (Optional) Create admin user for Web UI
+make ui          # 4. Open Web UI
 ```
 
 ### After Restart
 
 ```bash
-# Start Vault
-docker-compose up -d
+make up          # Start Vault
+make unseal      # Unseal (required after every restart)
+```
 
-# Unseal (required after every restart)
-./scripts/unseal.sh
+### Available Commands
+
+```bash
+make help        # See all available commands
 ```
 
 ## 🏗️ Project Structure
