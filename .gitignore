@@ -55,3 +55,6 @@ logs/
 tmp/
 temp/
 *.tmp
+
+# MCP Configuration (IDE-specific)
+.mcp.json
