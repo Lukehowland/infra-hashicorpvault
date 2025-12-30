@@ -26,6 +26,44 @@ make unseal      # Unseal (required after every restart)
 make help        # See all available commands
 ```
 
+<details>
+<summary>🔧 Manual Installation (without Make)</summary>
+
+If you don't have `make` available, you can run the commands manually:
+
+**First Time Setup:**
+
+```bash
+# 1. Start Vault
+docker-compose up -d
+
+# 2. Wait for Vault to be ready
+sleep 5
+
+# 3. Initialize Vault (run ONLY ONCE)
+mkdir -p secrets
+docker exec vault-server vault operator init -format=json > secrets/vault-keys.json
+chmod 600 secrets/vault-keys.json
+
+# 4. Unseal Vault
+./scripts/unseal.sh
+
+# 5. (Optional) Setup admin user for Web UI
+./scripts/setup-admin.sh
+
+# 6. Access UI
+open http://localhost:8200
+```
+
+**After Restart:**
+
+```bash
+docker-compose up -d
+./scripts/unseal.sh
+```
+
+</details>
+
 ## 🏗️ Project Structure
 
 ```
