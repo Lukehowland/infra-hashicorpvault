@@ -35,7 +35,12 @@ echo ""
 
 # Get root token
 if [ -f "$KEYS_FILE" ]; then
-    ROOT_TOKEN=$(cat "$KEYS_FILE" | grep -o '"root_token":"[^"]*"' | cut -d'"' -f4)
+    if command -v jq &> /dev/null; then
+        ROOT_TOKEN=$(jq -r '.root_token' "$KEYS_FILE")
+    else
+        echo -e "${RED}Error: jq is required for JSON parsing. Install with: sudo apt install jq${NC}"
+        exit 1
+    fi
 else
     read -sp "Enter root token: " ROOT_TOKEN
     echo ""
@@ -108,7 +113,7 @@ APP_TOKEN=$(docker exec -e VAULT_TOKEN="$ROOT_TOKEN" $VAULT_CONTAINER \
     vault token create \
     -policy="$PROJECT_NAME_LOWER" \
     -ttl=8760h \
-    -format=json | grep -o '"client_token":"[^"]*"' | cut -d'"' -f4)
+    -format=json | jq -r '.auth.client_token')
 
 # Save token
 echo "$APP_TOKEN" > "./secrets/${PROJECT_NAME_LOWER}-token.txt"
