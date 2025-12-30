@@ -1,51 +1,75 @@
 # ==========================================
 # Vault Admin Policy
 # ==========================================
-# Full administrative access to Vault
-# Assign only to trusted operators
+# Official HashiCorp recommended admin policy
+# Source: https://developer.hashicorp.com/vault/tutorials/policies/policies
 # ==========================================
 
-# Manage all secrets
-path "secret/*" {
-  capabilities = ["create", "read", "update", "delete", "list"]
-}
-
-# Manage auth methods
-path "auth/*" {
-  capabilities = ["create", "read", "update", "delete", "list", "sudo"]
-}
-
-# Manage policies
-path "sys/policies/*" {
-  capabilities = ["create", "read", "update", "delete", "list"]
-}
-
-# Manage identity
-path "identity/*" {
-  capabilities = ["create", "read", "update", "delete", "list"]
-}
-
-# View system health
+# Read system health check
 path "sys/health" {
   capabilities = ["read", "sudo"]
 }
 
-# Manage leases
-path "sys/leases/*" {
+# List existing policies
+path "sys/policies/acl" {
+  capabilities = ["list"]
+}
+
+# Create and manage ACL policies
+path "sys/policies/acl/*" {
   capabilities = ["create", "read", "update", "delete", "list", "sudo"]
 }
 
-# Manage mounts
-path "sys/mounts/*" {
-  capabilities = ["create", "read", "update", "delete", "list"]
+# Manage auth methods broadly across Vault
+path "auth/*" {
+  capabilities = ["create", "read", "update", "delete", "list", "sudo"]
 }
 
-# View audit logs
-path "sys/audit*" {
-  capabilities = ["read", "list", "sudo"]
+# Create, update, and delete auth methods
+path "sys/auth/*" {
+  capabilities = ["create", "update", "delete", "sudo"]
+}
+
+# List auth methods
+path "sys/auth" {
+  capabilities = ["read"]
+}
+
+# List, create, update, and delete key/value secrets
+path "secret/*" {
+  capabilities = ["create", "read", "update", "delete", "list", "sudo"]
+}
+
+# Manage secrets engines (enable/disable database, kv, etc.)
+path "sys/mounts/*" {
+  capabilities = ["create", "read", "update", "delete", "list", "sudo"]
+}
+
+# List existing secrets engines
+path "sys/mounts" {
+  capabilities = ["read"]
+}
+
+# ==========================================
+# Additional permissions for database engine
+# ==========================================
+
+# Manage database secrets engine
+path "database/*" {
+  capabilities = ["create", "read", "update", "delete", "list", "sudo"]
+}
+
+# Manage leases (for dynamic secrets)
+path "sys/leases/*" {
+  capabilities = ["create", "read", "update", "delete", "list", "sudo"]
 }
 
 # Manage tokens
 path "auth/token/*" {
   capabilities = ["create", "read", "update", "delete", "list", "sudo"]
+}
+
+# Manage identity (entities, groups)
+path "identity/*" {
+  capabilities = ["create", "read", "update", "delete", "list"]
 }
