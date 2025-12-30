@@ -1,26 +1,37 @@
-.PHONY: help up down logs status init unseal backup add-project clean
+.PHONY: help up down logs status unseal setup-admin backup add-project read-secret ui clean
 
 help:
 	@echo "🔐 Vault Infrastructure"
 	@echo ""
-	@echo "Commands:"
-	@echo "  make up           Start Vault"
-	@echo "  make down         Stop Vault"
-	@echo "  make logs         View logs"
-	@echo "  make status       Check Vault status"
-	@echo "  make init         Initialize Vault (first time only)"
-	@echo "  make unseal       Unseal Vault"
-	@echo "  make backup       Create backup"
-	@echo "  make ui           Open Vault UI in browser"
+	@echo "Lifecycle:"
+	@echo "  make up              Start Vault"
+	@echo "  make down            Stop Vault"
+	@echo "  make logs            View logs"
+	@echo "  make status          Check Vault status"
 	@echo ""
-	@echo "Add Project:"
-	@echo "  make add-project NAME=myproject"
+	@echo "Operations:"
+	@echo "  make unseal          Unseal Vault (required after restart)"
+	@echo "  make setup-admin     Create admin user for Web UI"
+	@echo "  make backup          Create encrypted backup"
+	@echo "  make ui              Open Vault UI in browser"
+	@echo ""
+	@echo "Projects:"
+	@echo "  make add-project NAME=myproject    Add new project with secrets"
+	@echo "  make read-secret PROJECT=x PATH=y  Read a secret"
+	@echo ""
+	@echo "Danger Zone:"
+	@echo "  make clean           Destroy all Vault data"
 	@echo ""
 
 up:
 	@docker-compose up -d
 	@echo "✅ Vault started"
 	@echo "   UI: http://localhost:8200"
+	@echo ""
+	@echo "ℹ️  If this is the first time, initialize Vault with:"
+	@echo "   docker exec vault-server vault operator init -format=json > secrets/vault-keys.json"
+	@echo "   chmod 600 secrets/vault-keys.json"
+	@echo "   make unseal"
 
 down:
 	@docker-compose down
@@ -32,12 +43,11 @@ logs:
 status:
 	@docker exec vault-server vault status || true
 
-init:
-	@chmod +x scripts/*.sh
-	@./scripts/init.sh
-
 unseal:
 	@./scripts/unseal.sh
+
+setup-admin:
+	@./scripts/setup-admin.sh
 
 backup:
 	@./scripts/backup.sh
@@ -45,8 +55,20 @@ backup:
 add-project:
 ifndef NAME
 	@echo "Usage: make add-project NAME=project-name"
+	@echo "Example: make add-project NAME=ecommerce"
 else
 	@./scripts/add-project.sh $(NAME)
+endif
+
+read-secret:
+ifndef PROJECT
+	@echo "Usage: make read-secret PROJECT=project-name PATH=secret-path"
+	@echo "Example: make read-secret PROJECT=vicvet PATH=database"
+else ifndef PATH
+	@echo "Usage: make read-secret PROJECT=project-name PATH=secret-path"
+	@echo "Example: make read-secret PROJECT=vicvet PATH=database"
+else
+	@./scripts/read-secret.sh $(PROJECT) $(PATH)
 endif
 
 ui:
@@ -58,7 +80,7 @@ clean:
 	echo; \
 	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
 		docker-compose down -v; \
-		rm -rf secrets/; \
+		rm -rf secrets/ backups/; \
 		echo "✅ Vault data destroyed"; \
 	else \
 		echo "❌ Cancelled"; \
