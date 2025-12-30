@@ -1,4 +1,4 @@
-.PHONY: help up down logs status unseal setup-admin backup add-project read-secret ui clean
+.PHONY: help up down logs status init unseal setup-admin backup add-project read-secret ui clean
 
 help:
 	@echo "🔐 Vault Infrastructure"
@@ -8,6 +8,9 @@ help:
 	@echo "  make down            Stop Vault"
 	@echo "  make logs            View logs"
 	@echo "  make status          Check Vault status"
+	@echo ""
+	@echo "First Time Setup:"
+	@echo "  make init            Initialize Vault (run ONLY ONCE)"
 	@echo ""
 	@echo "Operations:"
 	@echo "  make unseal          Unseal Vault (required after restart)"
@@ -28,10 +31,8 @@ up:
 	@echo "✅ Vault started"
 	@echo "   UI: http://localhost:8200"
 	@echo ""
-	@echo "ℹ️  If this is the first time, initialize Vault with:"
-	@echo "   docker exec vault-server vault operator init -format=json > secrets/vault-keys.json"
-	@echo "   chmod 600 secrets/vault-keys.json"
-	@echo "   make unseal"
+	@echo "ℹ️  First time? Run: make init"
+	@echo "   After restart? Run: make unseal"
 
 down:
 	@docker-compose down
@@ -42,6 +43,23 @@ logs:
 
 status:
 	@docker exec vault-server vault status || true
+
+init:
+	@echo "🔐 Initializing Vault..."
+	@echo ""
+	@echo "⏳ Waiting for Vault to be ready..."
+	@sleep 5
+	@mkdir -p secrets
+	@docker exec vault-server vault operator init -format=json > secrets/vault-keys.json
+	@chmod 600 secrets/vault-keys.json
+	@echo ""
+	@echo "✅ Vault initialized!"
+	@echo "   Keys saved to: secrets/vault-keys.json"
+	@echo ""
+	@echo "⚠️  IMPORTANT: Keep vault-keys.json safe! It contains your unseal keys and root token."
+	@echo ""
+	@echo "🔓 Now unsealing Vault..."
+	@./scripts/unseal.sh
 
 unseal:
 	@./scripts/unseal.sh
